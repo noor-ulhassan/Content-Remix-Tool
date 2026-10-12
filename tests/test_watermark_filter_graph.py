@@ -127,7 +127,35 @@ def test_camera_shake_uses_percentage_based_displacement():
 
     rendered = graph.build_video_filter()
 
-    assert "crop=iw-5:ih-3:random(0)*5:random(0)*3,scale=iw:ih" in rendered
+    assert "crop=iw-5:ih-3:random(0)*5:random(0)*3,scale=1000:600" in rendered
+
+
+def test_configure_applies_camera_shake():
+    media_info = SimpleNamespace(
+        video_streams=[SimpleNamespace(width=1000, height=600, fps=30, duration=5)]
+    )
+
+    graph = FilterGraph().configure(
+        {"camera_shake": {"enabled": True, "intensity": 0.5, "randomize": False}},
+        media_info,
+    )
+
+    rendered = graph.build_video_filter()
+
+    assert "crop=iw-5:ih-3:random(0)*5:random(0)*3,scale=1000:600" in rendered
+
+
+def test_configure_skips_camera_shake_at_zero_percent():
+    media_info = SimpleNamespace(
+        video_streams=[SimpleNamespace(width=1000, height=600, fps=30, duration=5)]
+    )
+
+    graph = FilterGraph().configure(
+        {"camera_shake": {"enabled": True, "intensity": 0.0, "randomize": False}},
+        media_info,
+    )
+
+    assert "random(0)" not in graph.build_video_filter()
 
 
 def test_zoom_level_control_accepts_manual_input_and_updates_label():

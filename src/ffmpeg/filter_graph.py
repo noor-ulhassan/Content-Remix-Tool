@@ -76,7 +76,7 @@ class FilterGraph:
             self.add_motion_blur(effects["motion_blur"])
 
         if effects.get("camera_shake", {}).get("enabled", False):
-            self.add_camera_shake(effects["camera_shake"])
+            self.add_camera_shake(effects["camera_shake"], media_info)
 
         if effects.get("stabilization", {}).get("enabled", False):
             self._video_filters.append("deshake")
@@ -316,6 +316,9 @@ class FilterGraph:
                 intensity = 0.5
 
         intensity = max(0.0, min(2.0, float(intensity)))
+        # "0%" means no shake at all
+        if intensity == 0:
+            return
         if not media_info or not media_info.video_streams:
             return
 
@@ -326,8 +329,9 @@ class FilterGraph:
 
         displacement_x = max(1, int(round(width * (intensity / 100.0))))
         displacement_y = max(1, int(round(height * (intensity / 100.0))))
+        # Scale back to the source size so the shake doesn't shrink the frame
         self._video_filters.append(
-            f"crop=iw-{displacement_x}:ih-{displacement_y}:random(0)*{displacement_x}:random(0)*{displacement_y},scale=iw:ih"
+            f"crop=iw-{displacement_x}:ih-{displacement_y}:random(0)*{displacement_x}:random(0)*{displacement_y},scale={width}:{height}"
         )
 
     def add_border(self, config: Dict[str, Any]) -> None:
