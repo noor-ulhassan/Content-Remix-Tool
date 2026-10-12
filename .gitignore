@@ -16,3 +16,7 @@ env/
 build/
 dist/
 *.egg-info/
+
+.env
+IMPROVEMENT_BACKLOG.md
+PROJECT_GUIDE.md
