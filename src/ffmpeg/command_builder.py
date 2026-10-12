@@ -45,7 +45,12 @@ class CommandBuilder:
         self._gpu_encoders: List[str] = []
 
     def detect_gpu_encoders(self) -> List[str]:
-        """Detect available GPU encoders by testing ffmpeg."""
+        """Detect GPU encoders that can actually encode a test frame.
+
+        An encoder can be compiled into ffmpeg but still fail at runtime
+        (e.g. NVENC on a machine without an NVIDIA GPU), so it only counts
+        as available when the test encode exits successfully.
+        """
         encoders = []
         test_encoders = [
             "h264_nvenc", "hevc_nvenc", "av1_nvenc",
@@ -54,10 +59,16 @@ class CommandBuilder:
         ]
         for enc in test_encoders:
             try:
-                cmd = [self._ffmpeg, "-f", "lavfi", "-i", "nullsrc=duration=0.1", "-c:v", enc, "-frames:v", "1", "-f", "null", "-"]
+                # Some hardware encoders reject very small frames, so use a
+                # realistic size and pixel format for the test input.
+                cmd = [
+                    self._ffmpeg, "-hide_banner",
+                    "-f", "lavfi", "-i", "color=black:s=256x256:d=0.1",
+                    "-pix_fmt", "yuv420p",
+                    "-c:v", enc, "-frames:v", "1", "-f", "null", "-"
+                ]
                 result = subprocess.run(cmd, capture_output=True, timeout=10)
-                stderr = result.stderr.decode('utf-8', errors='ignore').lower()
-                if "unknown encoder" not in stderr and "not found" not in stderr:
+                if result.returncode == 0:
                     encoders.append(enc)
             except Exception:
                 pass
